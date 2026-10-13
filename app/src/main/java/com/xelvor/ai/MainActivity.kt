@@ -81,7 +81,7 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER_VERTICAL
         }
         input = EditText(this).apply {
-            hint = "اكتب طلبك هنا..."
+            this.hint = "اكتب طلبك هنا..."
             textSize = 15f
             setTextColor(textPrimary)
             setHintTextColor(muted)
