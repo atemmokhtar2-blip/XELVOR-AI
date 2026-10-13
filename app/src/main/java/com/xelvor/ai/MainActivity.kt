@@ -23,7 +23,7 @@ class MainActivity : Activity() {
     private val bg = Color.rgb(12, 14, 20)
     private val panel = Color.rgb(24, 27, 37)
     private val accent = Color.rgb(137, 105, 255)
-    private val text = Color.rgb(241, 242, 248)
+    private val textPrimary = Color.rgb(241, 242, 248)
     private val muted = Color.rgb(163, 168, 184)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,7 +46,7 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(0, dp(8), 0, dp(18))
         }
-        header.addView(label("XELVOR AI", 25f, text, true))
+        header.addView(label("XELVOR AI", 25f, textPrimary, true))
         header.addView(label("مساعدك الشخصي • Android", 13f, muted, false).apply {
             setPadding(0, dp(4), 0, 0)
         })
@@ -83,7 +83,7 @@ class MainActivity : Activity() {
         input = EditText(this).apply {
             hint = "اكتب طلبك هنا..."
             textSize = 15f
-            setTextColor(text)
+            setTextColor(textPrimary)
             setHintTextColor(muted)
             setSingleLine(false)
             maxLines = 3
@@ -121,7 +121,7 @@ class MainActivity : Activity() {
             setBackgroundColor(if (fromUser) Color.rgb(48, 39, 78) else panel)
         }
         card.addView(label(author, 12f, if (fromUser) Color.rgb(208, 195, 255) else Color.rgb(179, 160, 255), true))
-        card.addView(label(body, 15f, text, false).apply {
+        card.addView(label(body, 15f, textPrimary, false).apply {
             setPadding(0, dp(5), 0, 0)
         })
         val params = LinearLayout.LayoutParams(
