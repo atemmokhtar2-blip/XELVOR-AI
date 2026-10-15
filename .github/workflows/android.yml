@@ -39,9 +39,7 @@ jobs:
       - name: Download Gemma 3 1B local model
         run: |
           mkdir -p app/src/main/assets
-          curl --fail --location --retry 3 --retry-delay 2 \\
-            "https://huggingface.co/litert-community/Gemma3-1B-IT/resolve/main/Gemma3-1B-IT_multi-prefill-seq_q4_ekv2048.task?download=true" \\
-            --output app/src/main/assets/xelvor-local-model.task
+          curl --fail --location --retry 3 --retry-delay 2 --output app/src/main/assets/xelvor-local-model.task "https://huggingface.co/litert-community/Gemma3-1B-IT/resolve/main/Gemma3-1B-IT_multi-prefill-seq_q4_ekv2048.task?download=true"
           test "$(stat -c%s app/src/main/assets/xelvor-local-model.task)" -gt 500000000
 
       - name: Build Debug APK
