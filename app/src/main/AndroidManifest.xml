@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application android:allowBackup="false" android:label="XELVOR AI" android:supportsRtl="true" android:theme="@android:style/Theme.Material.NoActionBar">
+    <application android:allowBackup="false" android:icon="@drawable/ic_xelvor" android:label="XELVOR AI" android:supportsRtl="true" android:theme="@android:style/Theme.Material.NoActionBar">
         <uses-native-library android:name="libOpenCL.so" android:required="false" />
         <uses-native-library android:name="libOpenCL-car.so" android:required="false" />
         <uses-native-library android:name="libOpenCL-pixel.so" android:required="false" />
