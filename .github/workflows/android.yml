@@ -36,11 +36,11 @@ jobs:
       - name: Install Android platform and build tools
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Download Qwen2.5 0.5B local model
+      - name: Download Qwen2.5 1.5B local model
         run: |
           mkdir -p app/src/main/assets
-          curl --fail --location --retry 3 --retry-delay 2 --output app/src/main/assets/xelvor-local-model.task "https://huggingface.co/litert-community/Qwen2.5-0.5B-Instruct/resolve/main/Qwen2.5-0.5B-Instruct_multi-prefill-seq_q8_ekv1280.task?download=true"
-          test "$(stat -c%s app/src/main/assets/xelvor-local-model.task)" -gt 500000000
+          curl --fail --location --retry 3 --retry-delay 2 --output app/src/main/assets/xelvor-local-model.task "https://huggingface.co/litert-community/Qwen2.5-1.5B-Instruct/resolve/main/Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv1280.task?download=true"
+          test "$(stat -c%s app/src/main/assets/xelvor-local-model.task)" -gt 1400000000
 
       - name: Build Debug APK
         run: gradle --no-daemon assembleDebug
