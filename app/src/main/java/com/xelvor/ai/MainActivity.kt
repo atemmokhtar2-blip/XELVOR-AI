@@ -118,7 +118,9 @@ class MainActivity : Activity() {
             .setTitle("الذكاء الاصطناعي المحلي")
             .setMessage(details + "\n\nاختر نموذج MediaPipe LLM Inference متوافقًا بصيغة .task. قد يكون حجمه مئات الميجابايت. بعد استيراده تتم معالجة الرسائل على الجهاز دون إرسالها إلى خادم.")
             .setPositiveButton("اختيار ملف النموذج") { _, _ -> pickModelFile() }
-            .setNeutralButton("تحميل/إعادة تحميل") { _, _ -> loadLocalModel(false) }
+            .setNeutralButton("صفحة تنزيل النموذج") { _, _ ->
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://huggingface.co/litert-community/Gemma3-1B-IT/resolve/main/gemma3-1b-it-int4.task?download=true")))
+            }
             .setNegativeButton("إغلاق", null)
             .show()
     }
@@ -186,6 +188,7 @@ class MainActivity : Activity() {
                     LlmInference.LlmInferenceOptions.builder()
                         .setModelPath(modelFile.absolutePath)
                         .setMaxTokens(512)
+                        .setPreferredBackend(LlmInference.Backend.CPU)
                         .build()
                 )
                 runOnUiThread {
