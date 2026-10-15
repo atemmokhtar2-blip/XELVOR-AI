@@ -85,7 +85,7 @@ class MainActivity : Activity() {
         root.addView(hint)
         val composer = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         input = EditText(this).apply {
-            hint = "اكتب رسالتك..."
+            this.hint = "اكتب رسالتك..."
             textSize = 15f
             setTextColor(textPrimary)
             setHintTextColor(muted)
