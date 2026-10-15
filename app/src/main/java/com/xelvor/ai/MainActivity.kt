@@ -1,6 +1,8 @@
 package com.xelvor.ai
 
 import android.app.Activity
+import android.app.admin.DevicePolicyManager
+import android.content.ComponentName
 import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
@@ -146,9 +148,40 @@ class MainActivity : Activity() {
             .setPositiveButton("تحميل / إعادة تحميل") { _, _ ->
                 if (!modelFile.exists()) installBundledModel() else loadLocalModel(false)
             }
-            .setNeutralButton("إعدادات إمكانية الوصول") { _, _ -> startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+            .setNeutralButton("إعدادات الصلاحيات") { _, _ -> showPermissionsOptions() }
             .setNegativeButton("إغلاق", null)
             .show()
+    }
+
+    private fun showPermissionsOptions() {
+        AlertDialog.Builder(this)
+            .setTitle("صلاحيات XELVOR")
+            .setMessage("إمكانية الوصول: قراءة النص الظاهر ومحاولة الضغط على عنصر محدد بعد موافقتك.\\nإدارة الجهاز: تسمح فقط بقفل الشاشة في هذه النسخة. لا تمنح صلاحية root ولا تتيح تجاوز قفل الهاتف أو الوصول إلى كل البيانات.")
+            .setPositiveButton("إمكانية الوصول") { _, _ -> startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+            .setNeutralButton("تفعيل إدارة الجهاز") { _, _ -> requestDeviceAdmin() }
+            .setNegativeButton("إغلاق", null)
+            .show()
+    }
+
+    private fun deviceAdminComponent() = ComponentName(this, XelvorDeviceAdminReceiver::class.java)
+
+    private fun requestDeviceAdmin() {
+        val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
+            putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, deviceAdminComponent())
+            putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "تُستخدم هذه الصلاحية لقفل شاشة هاتفك فقط عندما تطلب ذلك وتوافق على الإجراء.")
+        }
+        startActivity(intent)
+    }
+
+    private fun lockDeviceWithAdmin() {
+        val manager = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        if (!manager.isAdminActive(deviceAdminComponent())) {
+            addMessage("XELVOR", "لم تُفعّل إدارة الجهاز بعد. افتح «النموذج» ثم «إعدادات الصلاحيات» وفعّل إدارة الجهاز، وبعدها أعد طلب قفل الشاشة.", false)
+            requestDeviceAdmin()
+            return
+        }
+        manager.lockNow()
+        addMessage("XELVOR", "تم إرسال طلب قفل الشاشة إلى أندرويد.", false)
     }
 
     private fun installBundledModel() {
@@ -354,6 +387,11 @@ class MainActivity : Activity() {
                 addMessage("XELVOR", "فتحت لوحة الاتصال للمراجعة. اضغط اتصال بنفسك إذا أردت.", false)
             }
         }
+        if (lower == "اقفل الشاشة" || lower == "اقفل الموبايل" || lower == "اقفل الجهاز" || lower == "lock screen") {
+            return ApprovedAction("قفل شاشة الهاتف", "سيُقفل الهاتف فورًا بعد موافقتك. تأكد أنك انتهيت من استخدامه.") {
+                lockDeviceWithAdmin()
+            }
+        }
         if (lower == "اقرأ الشاشة" || lower == "اقرأ محتوى الشاشة" || lower == "read screen") {
             return ApprovedAction("قراءة الشاشة الحالية", "سيقرأ النص الظاهر فقط إذا فعّلت خدمة إمكانية الوصول يدويًا من إعدادات أندرويد. النص سيُمرر إلى النموذج المحلي.") {
                 val screenText = com.xelvor.ai.assistant.XelvorAccessibilityService.instance?.readVisibleText()
@@ -406,7 +444,7 @@ class MainActivity : Activity() {
                 val role = if (message.fromUser) "user" else "assistant"
                 "<|im_start|>" + role + "\n" + message.body + "\n<|im_end|>\n"
             }
-        return "<|im_start|>system\nأنت XELVOR AI، مساعد شخصي يتحدث العربية المصرية الواضحة. اشرح قدراتك وحدودك بصدق، ونظّم المهام إلى خطوات قصيرة. أجب بدقة ووضوح ولا تخترع معلومات. الأدوات التي قد ينفذها التطبيق بعد موافقة المستخدم: فتح تطبيقات محددة، البحث في الويب، فتح إعدادات أندرويد، فتح شاشة إعداد منبه، فتح لوحة الاتصال دون إجراء المكالمة، وقراءة النص الظاهر أو الضغط على عنصر مطابق عند تفعيل خدمة إمكانية الوصول. لا تدّع تنفيذ أي إجراء لم يؤكده التطبيق. لا ترسل رسالة أو تحذف أو تشتري أو تغيّر إعدادًا حساسًا من تلقاء نفسك؛ اطلب مراجعة صريحة قبل أي خطوة ذات أثر.\n<|im_end|>\n" +
+        return "<|im_start|>system\nأنت XELVOR AI، مساعد شخصي يتحدث العربية المصرية الواضحة. اشرح قدراتك وحدودك بصدق، ونظّم المهام إلى خطوات قصيرة. أجب بدقة ووضوح ولا تخترع معلومات. الأدوات التي قد ينفذها التطبيق بعد موافقة المستخدم: فتح تطبيقات محددة، البحث في الويب، فتح إعدادات أندرويد، فتح شاشة إعداد منبه، فتح لوحة الاتصال دون إجراء المكالمة، وقفل الشاشة إذا فعّلت إدارة الجهاز، وقراءة النص الظاهر أو الضغط على عنصر مطابق عند تفعيل خدمة إمكانية الوصول. لا تدّع تنفيذ أي إجراء لم يؤكده التطبيق. لا ترسل رسالة أو تحذف أو تشتري أو تغيّر إعدادًا حساسًا من تلقاء نفسك؛ اطلب مراجعة صريحة قبل أي خطوة ذات أثر.\n<|im_end|>\n" +
             history + "<|im_start|>user\n" + request + "\n<|im_end|>\n<|im_start|>assistant\n"
     }
 
