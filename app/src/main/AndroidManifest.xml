@@ -14,7 +14,7 @@
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
         </activity>
-        <service android:name=".assistant.XelvorAccessibilityService" android:label="XELVOR AI task assistance" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" android:exported="false">
+        <receiver android:name=".XelvorDeviceAdminReceiver" android:label="XELVOR AI device admin" android:permission="android.permission.BIND_DEVICE_ADMIN" android:exported="true">\n            <meta-data android:name="android.app.device_admin" android:resource="@xml/device_admin_policies" />\n            <intent-filter><action android:name="android.app.action.DEVICE_ADMIN_ENABLED" /></intent-filter>\n        </receiver>\n        <service android:name=".assistant.XelvorAccessibilityService" android:label="XELVOR AI task assistance" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" android:exported="false">
             <intent-filter><action android:name="android.accessibilityservice.AccessibilityService" /></intent-filter>
             <meta-data android:name="android.accessibilityservice" android:resource="@xml/accessibility_service_config" />
         </service>
