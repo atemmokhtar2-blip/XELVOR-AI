@@ -2,4 +2,5 @@
 <resources>
     <string name="app_name">XELVOR AI</string>
     <string name="accessibility_service_description">يسمح للمساعد بقراءة عناصر الشاشة عند تفعيل الخدمة يدويًا من إعدادات أندرويد. يمكنها قراءة النص الظاهر والضغط على عنصر مطابق لطلبك بعد موافقتك داخل التطبيق. لا تفعّلها إلا إذا كنت تريد هذه الميزة.</string>
-    <string name="device_admin_description">يسمح لـ XELVOR AI بقفل شاشة هذا الجهاز فقط عندما تطلب ذلك.</string>\n</resources>
+    <string name="device_admin_description">يسمح لـ XELVOR AI بقفل شاشة هذا الجهاز فقط عندما تطلب ذلك.</string>
+</resources>
