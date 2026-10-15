@@ -61,11 +61,10 @@ class MainActivity : Activity() {
         })
         header.addView(branding, LinearLayout.LayoutParams(0, -2, 1f))
         header.addView(smallButton("السجل") { showHistoryOptions() })
-        header.addView(smallButton("الإعدادات") { showSettings() }.apply {
-            val p = layoutParams as LinearLayout.LayoutParams
-            p.marginStart = dp(6)
-            layoutParams = p
-        })
+        val settingsButton = smallButton("الإعدادات") { showSettings() }
+        val settingsParams = LinearLayout.LayoutParams(-2, -2)
+        settingsParams.marginStart = dp(6)
+        header.addView(settingsButton, settingsParams)
         root.addView(header)
 
         val status = TextView(this).apply {
