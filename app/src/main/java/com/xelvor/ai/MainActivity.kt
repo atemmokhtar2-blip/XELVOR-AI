@@ -283,11 +283,15 @@ class MainActivity : Activity() {
     }
 
     private fun buildPrompt(request: String): String {
-        val recent = conversation.takeLast(10).joinToString("\n") {
-            (if (it.fromUser) "المستخدم: " else "XELVOR: ") + it.body
-        }
-        return "أنت XELVOR AI، مساعد شخصي يتحدث العربية المصرية الواضحة. أجب بدقة ووضوح ولا تخترع معلومات. إذا لم تعرف فقل ذلك، ولا تدّعِ تنفيذ إجراء على الهاتف.\n\nسياق المحادثة:\n" +
-            recent + "\n\nالمستخدم: " + request + "\nXELVOR:"
+        val history = conversation
+            .filterNot { it.body == "جارٍ التفكير محليًا..." }
+            .takeLast(8)
+            .joinToString("") { message ->
+                val role = if (message.fromUser) "user" else "model"
+                "<start_of_turn>" + role + "\\n" + message.body + "<end_of_turn>\\n"
+            }
+        return "<bos><start_of_turn>user\\nأنت XELVOR AI، مساعد شخصي يتحدث العربية المصرية الواضحة. أجب بدقة ووضوح ولا تخترع معلومات. إذا لم تعرف فقل ذلك. لا تدّع تنفيذ إجراءات على الهاتف.<end_of_turn>\\n" +
+            history + "<start_of_turn>model\\n"
     }
 
     private fun buildPlan(request: String): List<String> {
