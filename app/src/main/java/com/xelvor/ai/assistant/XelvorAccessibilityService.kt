@@ -21,8 +21,7 @@ class XelvorAccessibilityService : AccessibilityService() {
     fun readVisibleText(): String {
         val root = rootInActiveWindow ?: return ""
         val collected = mutableListOf<String>()
-        collectText(root, collected)
-        return collected.distinct().take(120).joinToString("\\n").take(6000)
+        try { collectText(root, collected); return collected.distinct().take(120).joinToString("\n").take(6000) } finally { root.recycle() }
     }
 
     private fun collectText(node: AccessibilityNodeInfo, output: MutableList<String>) {
