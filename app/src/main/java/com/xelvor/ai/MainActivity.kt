@@ -339,9 +339,12 @@ class MainActivity : Activity() {
     private fun detectApprovedAction(request: String): ApprovedAction? {
         val text = request.trim()
         val lower = text.lowercase(Locale.ROOT)
-        if (lower.startsWith("افتح ") || lower.startsWith("افتحلي ") || lower.startsWith("شغل ") || lower.startsWith("شغّل ")) {
-            val appName = text.substringAfter(' ').trim()
+        val openPrefixes = listOf("افتحلي ", "افتح ", "شغّل ", "شغل ", "خش على ", "ادخل على ", "روح على ", "open ", "launch ")
+        val openPrefix = openPrefixes.firstOrNull { lower.startsWith(it) }
+        if (openPrefix != null) {
+            val appName = text.substring(openPrefix.length).trim()
             val packages = mapOf(
+                "تيك توك" to "com.zhiliaoapp.musically", "tiktok" to "com.zhiliaoapp.musically", "تيكتوك" to "com.zhiliaoapp.musically",
                 "يوتيوب" to "com.google.android.youtube", "youtube" to "com.google.android.youtube",
                 "واتساب" to "com.whatsapp", "whatsapp" to "com.whatsapp",
                 "تيليجرام" to "org.telegram.messenger", "telegram" to "org.telegram.messenger",
@@ -355,6 +358,18 @@ class MainActivity : Activity() {
                     ?: throw ActivityNotFoundException("التطبيق غير مثبت أو لا يسمح النظام بفتحه")
                 startActivity(launch)
                 addMessage("XELVOR", "طلبت فتح $appName. تم تمرير الطلب إلى أندرويد.", false)
+            }
+        }
+        if (lower in listOf("ارجع", "رجوع", "عودة", "back")) {
+            return ApprovedAction("الرجوع", "سيطلب من أندرويد الرجوع خطوة واحدة في التطبيق الحالي.") {
+                val ok = com.xelvor.ai.assistant.XelvorAccessibilityService.instance?.goBack() ?: false
+                addMessage("XELVOR", if (ok) "تم إرسال أمر الرجوع." else "فعّل خدمة إمكانية الوصول أولًا حتى أستطيع طلب الرجوع.", false)
+            }
+        }
+        if (lower in listOf("الرئيسية", "روح للرئيسية", "اذهب للرئيسية", "home")) {
+            return ApprovedAction("الانتقال للرئيسية", "سيطلب من أندرويد عرض الشاشة الرئيسية للهاتف.") {
+                val ok = com.xelvor.ai.assistant.XelvorAccessibilityService.instance?.goHome() ?: false
+                addMessage("XELVOR", if (ok) "تم إرسال أمر الانتقال للرئيسية." else "فعّل خدمة إمكانية الوصول أولًا حتى أستطيع الانتقال للرئيسية.", false)
             }
         }
         if (lower.startsWith("ابحث عن ") || lower.startsWith("ابحثلي عن ") || lower.startsWith("search for ")) {
