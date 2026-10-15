@@ -124,7 +124,7 @@ class MainActivity : Activity() {
         }
         AlertDialog.Builder(this)
             .setTitle("الذكاء الاصطناعي المحلي")
-            .setMessage(details + "\\n\\nالنموذج: Gemma 3 1B IT، نسخة 4-bit. حجمه يقارب 555 ميجابايت، وقد يستهلك الذاكرة والبطارية أثناء التفكير.")
+            .setMessage(details + "\n\nالنموذج: Gemma 3 1B IT، نسخة 4-bit. حجمه يقارب 555 ميجابايت، وقد يستهلك الذاكرة والبطارية أثناء التفكير.")
             .setPositiveButton("تحميل / إعادة تحميل") { _, _ ->
                 if (!modelFile.exists()) installBundledModel() else loadLocalModel(false)
             }
@@ -288,10 +288,10 @@ class MainActivity : Activity() {
             .takeLast(8)
             .joinToString("") { message ->
                 val role = if (message.fromUser) "user" else "model"
-                "<start_of_turn>" + role + "\\n" + message.body + "<end_of_turn>\\n"
+                "<start_of_turn>" + role + "\n" + message.body + "<end_of_turn>\n"
             }
-        return "<bos><start_of_turn>user\\nأنت XELVOR AI، مساعد شخصي يتحدث العربية المصرية الواضحة. أجب بدقة ووضوح ولا تخترع معلومات. إذا لم تعرف فقل ذلك. لا تدّع تنفيذ إجراءات على الهاتف.<end_of_turn>\\n" +
-            history + "<start_of_turn>model\\n"
+        return "<bos><start_of_turn>user\nأنت XELVOR AI، مساعد شخصي يتحدث العربية المصرية الواضحة. أجب بدقة ووضوح ولا تخترع معلومات. إذا لم تعرف فقل ذلك. لا تدّع تنفيذ إجراءات على الهاتف.<end_of_turn>\n" +
+            history + "<start_of_turn>model\n"
     }
 
     private fun buildPlan(request: String): List<String> {
