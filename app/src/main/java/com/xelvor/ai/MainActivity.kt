@@ -6,6 +6,9 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.provider.Settings
+import android.view.animation.DecelerateInterpolator
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -49,7 +52,7 @@ class MainActivity : Activity() {
         loadConversation()
         buildUi()
         if (conversation.isEmpty()) {
-            addMessage("XELVOR", "أهلًا بك في XELVOR AI. نموذج Qwen2.5 0.5B مدمج داخل التطبيق؛ في أول تشغيل سيتم تجهيزه تلقائيًا وقد يستغرق ذلك دقائق. بعد التجهيز يمكنك الدردشة دون إنترنت.", false)
+            addMessage("XELVOR", "أهلًا بك في XELVOR AI. نموذج Qwen2.5 1.5B مدمج داخل التطبيق. أول تشغيل يحتاج وقتًا ومساحة إضافية لنسخ النموذج وتهيئته، وبعدها يمكنك الدردشة دون إنترنت.", false)
         } else renderConversation()
         updateStatus()
         if (modelFile.exists()) loadLocalModel(true) else installBundledModel()
@@ -63,8 +66,8 @@ class MainActivity : Activity() {
         }
         val header = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         val branding = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        branding.addView(label("XELVOR AI", 24f, textPrimary, true))
-        branding.addView(label("مساعدك الشخصي • ذكاء محلي", 12f, muted, false))
+        branding.addView(label("XELVOR AI", 27f, textPrimary, true))
+        branding.addView(label("مساعدك الشخصي • ذكاء محلي", 13f, muted, false))
         header.addView(branding, LinearLayout.LayoutParams(0, -2, 1f))
         header.addView(smallButton("السجل") { showHistoryOptions() })
         header.addView(smallButton("النموذج") { showSettings() }, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(6) })
@@ -72,8 +75,8 @@ class MainActivity : Activity() {
         status = TextView(this).apply {
             textSize = 11f
             setTextColor(Color.rgb(203, 188, 255))
-            setBackgroundColor(panel)
-            setPadding(dp(12), dp(10), dp(12), dp(10))
+            background = roundedBackground(panel, 16)
+            setPadding(dp(14), dp(12), dp(14), dp(12))
         }
         root.addView(status, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
         scroll = ScrollView(this).apply { isFillViewport = false; clipToPadding = false; setPadding(0, dp(14), 0, dp(12)) }
@@ -91,13 +94,14 @@ class MainActivity : Activity() {
             setHintTextColor(muted)
             maxLines = 3
             setPadding(dp(12), dp(10), dp(12), dp(10))
-            setBackgroundColor(panel)
+            background = roundedBackground(panel, 16)
         }
         composer.addView(input, LinearLayout.LayoutParams(0, -2, 1f))
         composer.addView(Button(this).apply {
             text = "إرسال"
             setTextColor(Color.WHITE)
-            setBackgroundTintList(android.content.res.ColorStateList.valueOf(accent))
+            background = roundedBackground(accent, 16)
+            setPadding(dp(12), dp(8), dp(12), dp(8))
             setOnClickListener { submitMessage() }
         }, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(8) })
         root.addView(composer)
@@ -106,7 +110,7 @@ class MainActivity : Activity() {
 
     private fun updateStatus() {
         status.text = when {
-            inference != null -> "● Qwen2.5 جاهز • الردود على الجهاز دون إنترنت"
+            inference != null -> "● Qwen2.5 1.5B جاهز • الردود على الجهاز دون إنترنت"
             installingModel -> "◌ جارٍ تجهيز نموذج الذكاء الاصطناعي داخل التطبيق..."
             busy -> "◌ XELVOR يعمل على طلبك..."
             modelFile.exists() -> "◌ النموذج موجود • جارٍ تحميله"
@@ -116,7 +120,7 @@ class MainActivity : Activity() {
 
     private fun showSettings() {
         val details = if (inference != null) {
-            "Qwen2.5 0.5B جاهز ويعالج المحادثات على الهاتف. لا تُرسل رسائلك إلى خادم."
+            "Qwen2.5 1.5B جاهز ويعالج المحادثات على الهاتف. لا تُرسل رسائلك إلى خادم."
         } else if (modelFile.exists()) {
             "ملف النموذج موجود (" + (modelFile.length() / (1024 * 1024)) + " MB)، لكن المحرك لم يبدأ بعد."
         } else {
@@ -124,10 +128,11 @@ class MainActivity : Activity() {
         }
         AlertDialog.Builder(this)
             .setTitle("الذكاء الاصطناعي المحلي")
-            .setMessage(details + "\n\nالنموذج: Qwen2.5 0.5B IT، نسخة 8-bit. حجمه يقارب 547 ميجابايت، وقد يستهلك الذاكرة والبطارية أثناء التفكير.")
+            .setMessage(details + "\n\nالنموذج: Qwen2.5 1.5B Instruct، نسخة 8-bit. حجمه يقارب 1.6 جيجابايت، وقد يحتاج نحو 2 جيجابايت أو أكثر من الذاكرة أثناء التشغيل. يلزم توفير مساحة إضافية لنسخ النموذج إلى مساحة التطبيق.")
             .setPositiveButton("تحميل / إعادة تحميل") { _, _ ->
                 if (!modelFile.exists()) installBundledModel() else loadLocalModel(false)
             }
+            .setNeutralButton("إعدادات إمكانية الوصول") { _, _ -> startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
             .setNegativeButton("إغلاق", null)
             .show()
     }
@@ -284,6 +289,7 @@ class MainActivity : Activity() {
 
     private fun buildPrompt(request: String): String {
         val history = conversation
+            .dropLast(2)
             .filterNot { it.body == "جارٍ التفكير محليًا..." }
             .takeLast(8)
             .joinToString("") { message ->
@@ -291,7 +297,7 @@ class MainActivity : Activity() {
                 "<|im_start|>" + role + "\n" + message.body + "\n<|im_end|>\n"
             }
         return "<|im_start|>system\nأنت XELVOR AI، مساعد شخصي يتحدث العربية المصرية الواضحة. أجب بدقة ووضوح ولا تخترع معلومات. إذا لم تعرف فقل ذلك. لا تدّع تنفيذ إجراءات على الهاتف.\n<|im_end|>\n" +
-            history + "<|im_start|>assistant\n"
+            history + "<|im_start|>user\n" + request + "\n<|im_end|>\n<|im_start|>assistant\n"
     }
 
     private fun buildPlan(request: String): List<String> {
@@ -341,7 +347,7 @@ class MainActivity : Activity() {
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(13), dp(11), dp(13), dp(11))
-            setBackgroundColor(if (message.fromUser) Color.rgb(48, 39, 78) else panel)
+            background = if (message.fromUser) GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(76, 54, 126), Color.rgb(45, 38, 75))).apply { cornerRadius = dp(18).toFloat() } else roundedBackground(panel, 18)
         }
         card.addView(label(message.author, 12f, if (message.fromUser) Color.rgb(208, 195, 255) else Color.rgb(179, 160, 255), true))
         card.addView(label(message.body, 15f, textPrimary, false).apply { setPadding(0, dp(5), 0, 0) })
@@ -350,11 +356,11 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
         params.gravity = if (message.fromUser) Gravity.END else Gravity.START
-        params.bottomMargin = dp(10)
+        params.bottomMargin = dp(12)
         messages.addView(card, params)
         card.alpha = 0f
         card.translationY = dp(8).toFloat()
-        card.animate().alpha(1f).translationY(0f).setDuration(230L).start()
+        card.animate().alpha(1f).translationY(0f).setDuration(300L).setInterpolator(DecelerateInterpolator()).start()
         scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
     }
 
@@ -386,7 +392,7 @@ class MainActivity : Activity() {
         textSize = 11f
         isAllCaps = false
         setTextColor(textPrimary)
-        setBackgroundTintList(android.content.res.ColorStateList.valueOf(panel))
+        background = roundedBackground(panel, 14)
         setOnClickListener {
             animate().scaleX(0.96f).scaleY(0.96f).setDuration(70L).withEndAction {
                 animate().scaleX(1f).scaleY(1f).setDuration(100L).start()
@@ -409,6 +415,8 @@ class MainActivity : Activity() {
         worker.shutdown()
         super.onDestroy()
     }
+
+    private fun roundedBackground(color: Int, radiusDp: Int): GradientDrawable = GradientDrawable().apply { setColor(color); cornerRadius = dp(radiusDp).toFloat() }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
