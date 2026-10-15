@@ -392,11 +392,27 @@ class MainActivity : Activity() {
                 lockDeviceWithAdmin()
             }
         }
-        if (lower == "اقرأ الشاشة" || lower == "اقرأ محتوى الشاشة" || lower == "read screen") {
-            return ApprovedAction("قراءة الشاشة الحالية", "سيقرأ النص الظاهر فقط إذا فعّلت خدمة إمكانية الوصول يدويًا من إعدادات أندرويد. النص سيُمرر إلى النموذج المحلي.") {
-                val screenText = com.xelvor.ai.assistant.XelvorAccessibilityService.instance?.readVisibleText()
-                if (screenText.isNullOrBlank()) addMessage("XELVOR", "لم أستطع قراءة الشاشة. فعّل خدمة XELVOR من إعدادات إمكانية الوصول وافتح الشاشة التي تريد قراءتها.", false)
-                else runLocalAi("حلّل النص الظاهر على شاشة الهاتف وأخبرني بما يحتويه، دون تنفيذ أي إجراء:\\n$screenText")
+        if (lower == "اقرأ الشاشة" || lower == "اقرأ محتوى الشاشة" || lower == "افهم الشاشة" || lower == "حلل الشاشة" || lower == "حلّل الشاشة" || lower == "read screen") {
+            return ApprovedAction("تحليل الشاشة الحالية", "سيقرأ XELVOR النصوص والعناصر التي يكشفها أندرويد في الشاشة الحالية، ثم يرسل الوصف إلى النموذج المحلي. قد لا تظهر الصور أو محتويات التطبيقات المحمية.") {
+                val service = com.xelvor.ai.assistant.XelvorAccessibilityService.instance
+                val screenText = service?.describeVisibleScreen()
+                if (screenText.isNullOrBlank()) {
+                    addMessage("XELVOR", "لم أستطع قراءة الشاشة. فعّل خدمة XELVOR من إعدادات إمكانية الوصول وافتح الشاشة المطلوبة، ثم جرّب مرة أخرى.", false)
+                } else {
+                    runLocalAi("حلّل وصف واجهة المستخدم التالي بدقة. اذكر فقط النصوص والعناصر الموجودة في الوصف. افصل الحقائق المرئية عن الاستنتاجات، واذكر ما لا يمكنك معرفته. لا تخمّن محتوى الصور ولا تدّع أنك ترى البكسلات. لا تنفّذ أي إجراء.\\n\\n$screenText")
+                }
+            }
+        }
+        if (lower == "انزل لأسفل" || lower == "مرر لأسفل" || lower == "مرر الشاشة لأسفل" || lower == "scroll down") {
+            return ApprovedAction("تمرير الشاشة لأسفل", "سيحاول تمرير أول عنصر قابل للتمرير في الشاشة الحالية مرة واحدة.") {
+                val ok = com.xelvor.ai.assistant.XelvorAccessibilityService.instance?.scrollScreen(true) ?: false
+                addMessage("XELVOR", if (ok) "أرسل أندرويد طلب التمرير لأسفل. قد تختلف النتيجة حسب التطبيق." else "لم أجد عنصرًا قابلًا للتمرير أو أن خدمة إمكانية الوصول غير مفعّلة.", false)
+            }
+        }
+        if (lower == "اطلع لفوق" || lower == "مرر لأعلى" || lower == "مرر الشاشة لأعلى" || lower == "scroll up") {
+            return ApprovedAction("تمرير الشاشة لأعلى", "سيحاول تمرير أول عنصر قابل للتمرير في الشاشة الحالية مرة واحدة.") {
+                val ok = com.xelvor.ai.assistant.XelvorAccessibilityService.instance?.scrollScreen(false) ?: false
+                addMessage("XELVOR", if (ok) "أرسل أندرويد طلب التمرير لأعلى. قد تختلف النتيجة حسب التطبيق." else "لم أجد عنصرًا قابلًا للتمرير أو أن خدمة إمكانية الوصول غير مفعّلة.", false)
             }
         }
         if (lower.startsWith("اضغط على ") || lower.startsWith("اضغط ")) {
