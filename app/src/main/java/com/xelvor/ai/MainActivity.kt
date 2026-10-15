@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
-import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -33,6 +32,7 @@ class MainActivity : Activity() {
     private val worker = Executors.newSingleThreadExecutor()
     @Volatile private var inference: LlmInference? = null
     @Volatile private var busy = false
+    @Volatile private var installingModel = false
     private val bg = Color.rgb(12, 14, 20)
     private val panel = Color.rgb(24, 27, 37)
     private val accent = Color.rgb(137, 105, 255)
@@ -49,10 +49,10 @@ class MainActivity : Activity() {
         loadConversation()
         buildUi()
         if (conversation.isEmpty()) {
-            addMessage("XELVOR", "أهلًا! التطبيق أصبح مجهزًا لتشغيل نموذج لغوي محلي. من زر «النموذج» استورد ملف MediaPipe متوافق بصيغة .task أول مرة. بعد تثبيت النموذج يمكن إجراء المحادثات دون إنترنت.", false)
+            addMessage("XELVOR", "أهلًا بك في XELVOR AI. نموذج Gemma 3 1B مدمج داخل التطبيق؛ في أول تشغيل سيتم تجهيزه تلقائيًا وقد يستغرق ذلك دقائق. بعد التجهيز يمكنك الدردشة دون إنترنت.", false)
         } else renderConversation()
         updateStatus()
-        if (modelFile.exists()) loadLocalModel(true)
+        if (modelFile.exists()) loadLocalModel(true) else installBundledModel()
     }
 
     private fun buildUi() {
@@ -106,69 +106,71 @@ class MainActivity : Activity() {
 
     private fun updateStatus() {
         status.text = when {
-            inference != null -> "● النموذج المحلي جاهز • المعالجة على الجهاز"
-            modelFile.exists() -> "◌ ملف النموذج موجود • جارٍ تجهيزه"
-            else -> "○ لم يتم تثبيت نموذج محلي • افتح «النموذج»"
+            inference != null -> "● Gemma 3 جاهز • الردود على الجهاز دون إنترنت"
+            installingModel -> "◌ جارٍ تجهيز نموذج الذكاء الاصطناعي داخل التطبيق..."
+            busy -> "◌ XELVOR يعمل على طلبك..."
+            modelFile.exists() -> "◌ النموذج موجود • جارٍ تحميله"
+            else -> "◌ النموذج المحلي لم يجهز بعد"
         }
     }
 
     private fun showSettings() {
-        val details = if (modelFile.exists()) "ملف النموذج موجود (" + (modelFile.length() / (1024 * 1024)) + " MB)." else "لا يوجد نموذج مثبت بعد."
+        val details = if (inference != null) {
+            "Gemma 3 1B جاهز ويعالج المحادثات على الهاتف. لا تُرسل رسائلك إلى خادم."
+        } else if (modelFile.exists()) {
+            "ملف النموذج موجود (" + (modelFile.length() / (1024 * 1024)) + " MB)، لكن المحرك لم يبدأ بعد."
+        } else {
+            "سيتم تجهيز النموذج المدمج تلقائيًا عند فتح التطبيق. يحتاج أول تشغيل إلى مساحة تخزين إضافية ووقت للنسخ."
+        }
         AlertDialog.Builder(this)
             .setTitle("الذكاء الاصطناعي المحلي")
-            .setMessage(details + "\n\nاختر نموذج MediaPipe LLM Inference متوافقًا بصيغة .task. قد يكون حجمه مئات الميجابايت. بعد استيراده تتم معالجة الرسائل على الجهاز دون إرسالها إلى خادم.")
-            .setPositiveButton("اختيار ملف النموذج") { _, _ -> pickModelFile() }
-            .setNeutralButton("صفحة تنزيل النموذج") { _, _ ->
-                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://huggingface.co/litert-community/Gemma3-1B-IT/resolve/main/gemma3-1b-it-int4.task?download=true")))
+            .setMessage(details + "\\n\\nالنموذج: Gemma 3 1B IT، نسخة 4-bit. حجمه يقارب 555 ميجابايت، وقد يستهلك الذاكرة والبطارية أثناء التفكير.")
+            .setPositiveButton("تحميل / إعادة تحميل") { _, _ ->
+                if (!modelFile.exists()) installBundledModel() else loadLocalModel(false)
             }
             .setNegativeButton("إغلاق", null)
             .show()
     }
 
-    private fun pickModelFile() {
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-            addCategory(Intent.CATEGORY_OPENABLE)
-            type = "*/*"
-        }
-        startActivityForResult(intent, REQUEST_MODEL)
-    }
-
-    @Deprecated("Uses the system document picker for compatibility.")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode != REQUEST_MODEL || resultCode != RESULT_OK) return
-        val uri: Uri = data?.data ?: return
-        AlertDialog.Builder(this)
-            .setTitle("استيراد النموذج")
-            .setMessage("سيُنسخ الملف إلى مساحة التطبيق الخاصة. اختر ملف MediaPipe متوافقًا بصيغة .task وليس ملف GGUF.")
-            .setNegativeButton("إلغاء", null)
-            .setPositiveButton("استيراد") { _, _ ->
-                busy = true
-                updateStatus()
-                worker.execute {
-                    try {
-                        contentResolver.openInputStream(uri).use { source ->
-                            requireNotNull(source) { "تعذر فتح الملف المحدد" }
-                            FileOutputStream(modelFile).use { target -> source.copyTo(target) }
+    private fun installBundledModel() {
+        if (busy || installingModel) return
+        installingModel = true
+        busy = true
+        updateStatus()
+        worker.execute {
+            val tempFile = File(filesDir, "xelvor-local-model.task.part")
+            try {
+                assets.open("xelvor-local-model.task").use { source ->
+                    FileOutputStream(tempFile).use { target ->
+                        val buffer = ByteArray(1024 * 1024)
+                        while (true) {
+                            val count = source.read(buffer)
+                            if (count < 0) break
+                            target.write(buffer, 0, count)
                         }
-                        runOnUiThread {
-                            try { inference?.close() } catch (_: Exception) {}
-                            inference = null
-                            busy = false
-                            addMessage("XELVOR", "تم استيراد الملف. سأختبر تحميله كنموذج محلي.", false)
-                            loadLocalModel(false)
-                        }
-                    } catch (e: Exception) {
-                        runOnUiThread {
-                            busy = false
-                            updateStatus()
-                            addMessage("XELVOR", "تعذر استيراد الملف: " + (e.message ?: "خطأ غير معروف"), false)
-                        }
+                        target.fd.sync()
                     }
                 }
-            }.show()
+                if (modelFile.exists()) modelFile.delete()
+                check(tempFile.renameTo(modelFile)) { "تعذر تثبيت ملف النموذج في مساحة التطبيق." }
+                runOnUiThread {
+                    installingModel = false
+                    busy = false
+                    updateStatus()
+                    addMessage("XELVOR", "تم تجهيز النموذج المدمج. سأبدأ تحميله على الجهاز الآن.", false)
+                    loadLocalModel(true)
+                }
+            } catch (e: Exception) {
+                tempFile.delete()
+                runOnUiThread {
+                    installingModel = false
+                    busy = false
+                    updateStatus()
+                    addMessage("XELVOR", "تعذر تجهيز النموذج المدمج. تأكد من وجود مساحة تخزين كافية ثم أعد المحاولة. التفاصيل: " + (e.message ?: "غير معروفة"), false)
+                }
+            }
+        }
     }
-
     private fun loadLocalModel(silent: Boolean) {
         if (!modelFile.exists()) {
             if (!silent) AlertDialog.Builder(this).setTitle("لا يوجد نموذج")
@@ -187,7 +189,7 @@ class MainActivity : Activity() {
                     this,
                     LlmInference.LlmInferenceOptions.builder()
                         .setModelPath(modelFile.absolutePath)
-                        .setMaxTokens(512)
+                        .setMaxTokens(2048)
                         .setPreferredBackend(LlmInference.Backend.CPU)
                         .build()
                 )
@@ -346,6 +348,9 @@ class MainActivity : Activity() {
         params.gravity = if (message.fromUser) Gravity.END else Gravity.START
         params.bottomMargin = dp(10)
         messages.addView(card, params)
+        card.alpha = 0f
+        card.translationY = dp(8).toFloat()
+        card.animate().alpha(1f).translationY(0f).setDuration(230L).start()
         scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
     }
 
@@ -378,7 +383,12 @@ class MainActivity : Activity() {
         isAllCaps = false
         setTextColor(textPrimary)
         setBackgroundTintList(android.content.res.ColorStateList.valueOf(panel))
-        setOnClickListener { action() }
+        setOnClickListener {
+            animate().scaleX(0.96f).scaleY(0.96f).setDuration(70L).withEndAction {
+                animate().scaleX(1f).scaleY(1f).setDuration(100L).start()
+            }.start()
+            action()
+        }
     }
 
     private fun label(value: String, size: Float, color: Int, bold: Boolean): TextView = TextView(this).apply {
