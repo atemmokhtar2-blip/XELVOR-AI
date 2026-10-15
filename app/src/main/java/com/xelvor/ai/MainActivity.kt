@@ -49,7 +49,7 @@ class MainActivity : Activity() {
         loadConversation()
         buildUi()
         if (conversation.isEmpty()) {
-            addMessage("XELVOR", "أهلًا بك في XELVOR AI. نموذج Gemma 3 1B مدمج داخل التطبيق؛ في أول تشغيل سيتم تجهيزه تلقائيًا وقد يستغرق ذلك دقائق. بعد التجهيز يمكنك الدردشة دون إنترنت.", false)
+            addMessage("XELVOR", "أهلًا بك في XELVOR AI. نموذج Qwen2.5 0.5B مدمج داخل التطبيق؛ في أول تشغيل سيتم تجهيزه تلقائيًا وقد يستغرق ذلك دقائق. بعد التجهيز يمكنك الدردشة دون إنترنت.", false)
         } else renderConversation()
         updateStatus()
         if (modelFile.exists()) loadLocalModel(true) else installBundledModel()
@@ -106,7 +106,7 @@ class MainActivity : Activity() {
 
     private fun updateStatus() {
         status.text = when {
-            inference != null -> "● Gemma 3 جاهز • الردود على الجهاز دون إنترنت"
+            inference != null -> "● Qwen2.5 جاهز • الردود على الجهاز دون إنترنت"
             installingModel -> "◌ جارٍ تجهيز نموذج الذكاء الاصطناعي داخل التطبيق..."
             busy -> "◌ XELVOR يعمل على طلبك..."
             modelFile.exists() -> "◌ النموذج موجود • جارٍ تحميله"
@@ -116,7 +116,7 @@ class MainActivity : Activity() {
 
     private fun showSettings() {
         val details = if (inference != null) {
-            "Gemma 3 1B جاهز ويعالج المحادثات على الهاتف. لا تُرسل رسائلك إلى خادم."
+            "Qwen2.5 0.5B جاهز ويعالج المحادثات على الهاتف. لا تُرسل رسائلك إلى خادم."
         } else if (modelFile.exists()) {
             "ملف النموذج موجود (" + (modelFile.length() / (1024 * 1024)) + " MB)، لكن المحرك لم يبدأ بعد."
         } else {
@@ -124,7 +124,7 @@ class MainActivity : Activity() {
         }
         AlertDialog.Builder(this)
             .setTitle("الذكاء الاصطناعي المحلي")
-            .setMessage(details + "\n\nالنموذج: Gemma 3 1B IT، نسخة 4-bit. حجمه يقارب 555 ميجابايت، وقد يستهلك الذاكرة والبطارية أثناء التفكير.")
+            .setMessage(details + "\n\nالنموذج: Qwen2.5 0.5B IT، نسخة 4-bit. حجمه يقارب 547 ميجابايت، وقد يستهلك الذاكرة والبطارية أثناء التفكير.")
             .setPositiveButton("تحميل / إعادة تحميل") { _, _ ->
                 if (!modelFile.exists()) installBundledModel() else loadLocalModel(false)
             }
@@ -189,7 +189,7 @@ class MainActivity : Activity() {
                     this,
                     LlmInference.LlmInferenceOptions.builder()
                         .setModelPath(modelFile.absolutePath)
-                        .setMaxTokens(2048)
+                        .setMaxTokens(1280)
                         .setPreferredBackend(LlmInference.Backend.CPU)
                         .build()
                 )
@@ -287,11 +287,11 @@ class MainActivity : Activity() {
             .filterNot { it.body == "جارٍ التفكير محليًا..." }
             .takeLast(8)
             .joinToString("") { message ->
-                val role = if (message.fromUser) "user" else "model"
-                "<start_of_turn>" + role + "\n" + message.body + "<end_of_turn>\n"
+                val role = if (message.fromUser) "user" else "assistant"
+                "<|im_start|>" + role + "\\n" + message.body + "\\n<|im_end|>\\n"
             }
-        return "<bos><start_of_turn>user\nأنت XELVOR AI، مساعد شخصي يتحدث العربية المصرية الواضحة. أجب بدقة ووضوح ولا تخترع معلومات. إذا لم تعرف فقل ذلك. لا تدّع تنفيذ إجراءات على الهاتف.<end_of_turn>\n" +
-            history + "<start_of_turn>model\n"
+        return "<|im_start|>system\\nأنت XELVOR AI، مساعد شخصي يتحدث العربية المصرية الواضحة. أجب بدقة ووضوح ولا تخترع معلومات. إذا لم تعرف فقل ذلك. لا تدّع تنفيذ إجراءات على الهاتف.\\n<|im_end|>\\n" +
+            history + "<|im_start|>assistant\\n"
     }
 
     private fun buildPlan(request: String): List<String> {
