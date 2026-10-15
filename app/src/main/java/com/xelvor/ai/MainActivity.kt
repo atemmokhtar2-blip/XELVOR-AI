@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.ActivityNotFoundException
 import android.speech.RecognizerIntent
-import android.app.AlarmManager
 import android.provider.AlarmClock
 import android.net.Uri
 import java.util.Locale
@@ -14,6 +13,7 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.provider.Settings
+import android.app.SearchManager
 import android.view.animation.DecelerateInterpolator
 import android.os.Bundle
 import android.view.Gravity
