@@ -10,9 +10,13 @@ android {
         applicationId = "com.xelvor.ai"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.3.0"
     }
+    androidResources {
+        noCompress += "task"
+    }
+
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
@@ -31,5 +35,5 @@ android {
 }
 
 dependencies {
-    implementation("com.google.mediapipe:tasks-genai:0.10.24")
+    implementation("com.google.mediapipe:tasks-genai:0.10.27")
 }
