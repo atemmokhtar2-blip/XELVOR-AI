@@ -124,7 +124,7 @@ class MainActivity : Activity() {
         }
         AlertDialog.Builder(this)
             .setTitle("الذكاء الاصطناعي المحلي")
-            .setMessage(details + "\n\nالنموذج: Qwen2.5 0.5B IT، نسخة 4-bit. حجمه يقارب 547 ميجابايت، وقد يستهلك الذاكرة والبطارية أثناء التفكير.")
+            .setMessage(details + "\n\nالنموذج: Qwen2.5 0.5B IT، نسخة 8-bit. حجمه يقارب 547 ميجابايت، وقد يستهلك الذاكرة والبطارية أثناء التفكير.")
             .setPositiveButton("تحميل / إعادة تحميل") { _, _ ->
                 if (!modelFile.exists()) installBundledModel() else loadLocalModel(false)
             }
@@ -174,7 +174,7 @@ class MainActivity : Activity() {
     private fun loadLocalModel(silent: Boolean) {
         if (!modelFile.exists()) {
             if (!silent) AlertDialog.Builder(this).setTitle("لا يوجد نموذج")
-                .setMessage("استورد ملف .task متوافق أولًا. النموذج غير مضمن في APK لتجنب تضخيم حجمه.")
+                .setMessage("ملف النموذج المدمج غير موجود في هذه النسخة. أعد تنزيل أحدث APK من GitHub Actions.")
                 .setPositiveButton("حسنًا", null).show()
             updateStatus()
             return
@@ -288,10 +288,10 @@ class MainActivity : Activity() {
             .takeLast(8)
             .joinToString("") { message ->
                 val role = if (message.fromUser) "user" else "assistant"
-                "<|im_start|>" + role + "\\n" + message.body + "\\n<|im_end|>\\n"
+                "<|im_start|>" + role + "\n" + message.body + "\n<|im_end|>\n"
             }
-        return "<|im_start|>system\\nأنت XELVOR AI، مساعد شخصي يتحدث العربية المصرية الواضحة. أجب بدقة ووضوح ولا تخترع معلومات. إذا لم تعرف فقل ذلك. لا تدّع تنفيذ إجراءات على الهاتف.\\n<|im_end|>\\n" +
-            history + "<|im_start|>assistant\\n"
+        return "<|im_start|>system\nأنت XELVOR AI، مساعد شخصي يتحدث العربية المصرية الواضحة. أجب بدقة ووضوح ولا تخترع معلومات. إذا لم تعرف فقل ذلك. لا تدّع تنفيذ إجراءات على الهاتف.\n<|im_end|>\n" +
+            history + "<|im_start|>assistant\n"
     }
 
     private fun buildPlan(request: String): List<String> {
