@@ -73,6 +73,24 @@ class XelvorAccessibilityService : AccessibilityService() {
         }
     }
 
+    fun scrollScreen(forward: Boolean): Boolean {
+        val root = rootInActiveWindow ?: return false
+        return try { scrollFirstScrollable(root, forward) } finally { root.recycle() }
+    }
+
+    private fun scrollFirstScrollable(node: AccessibilityNodeInfo, forward: Boolean): Boolean {
+        if (node.isVisibleToUser && node.isEnabled && node.isScrollable) {
+            val action = if (forward) AccessibilityNodeInfo.ACTION_SCROLL_FORWARD else AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
+            if (node.performAction(action)) return true
+        }
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i) ?: continue
+            val success = try { scrollFirstScrollable(child, forward) } finally { child.recycle() }
+            if (success) return true
+        }
+        return false
+    }
+
     fun clickVisibleText(target: String): Boolean {
         val root = rootInActiveWindow ?: return false
         return try { findAndClick(root, target.trim()) } finally { root.recycle() }
