@@ -26,7 +26,7 @@ class XelvorAccessibilityService : AccessibilityService() {
         val root = rootInActiveWindow ?: return "لا توجد شاشة نشطة قابلة للقراءة. افتح التطبيق المطلوب وتأكد من تفعيل إمكانية الوصول."
         val output = StringBuilder()
         try {
-            output.append("التطبيق: ").append(root.packageName ?: "غير معروف").append("\\n")
+            output.append("التطبيق: ").append(root.packageName ?: "غير معروف").append("\n")
             appendVisibleNodes(root, output, 0)
             return output.toString().take(10000)
         } finally {
@@ -48,7 +48,7 @@ class XelvorAccessibilityService : AccessibilityService() {
                 .append(" | enabled=").append(node.isEnabled)
                 .append(" | bounds=").append(bounds.left).append(",").append(bounds.top)
                 .append("-").append(bounds.right).append(",").append(bounds.bottom)
-                .append("\\n")
+                .append("\n")
         }
         for (i in 0 until node.childCount) {
             val child = node.getChild(i) ?: continue
@@ -56,6 +56,10 @@ class XelvorAccessibilityService : AccessibilityService() {
         }
     }
 
+
+    fun goBack(): Boolean = performGlobalAction(GLOBAL_ACTION_BACK)
+
+    fun goHome(): Boolean = performGlobalAction(GLOBAL_ACTION_HOME)
 
     fun readVisibleText(): String {
         val root = rootInActiveWindow ?: return ""
