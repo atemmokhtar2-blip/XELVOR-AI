@@ -4,6 +4,12 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
+import android.content.ActivityNotFoundException
+import android.speech.RecognizerIntent
+import android.app.AlarmManager
+import android.provider.AlarmClock
+import android.net.Uri
+import java.util.Locale
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -44,6 +50,8 @@ class MainActivity : Activity() {
     private val prefs by lazy { getSharedPreferences("xelvor_preferences", Context.MODE_PRIVATE) }
     private val modelFile by lazy { File(filesDir, "xelvor-local-model.task") }
     private data class ChatMessage(val author: String, val body: String, val fromUser: Boolean)
+    private data class ApprovedAction(val title: String, val explanation: String, val execute: () -> Unit)
+    private val speechRequestCode = 7302
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -97,6 +105,12 @@ class MainActivity : Activity() {
             background = roundedBackground(panel, 16)
         }
         composer.addView(input, LinearLayout.LayoutParams(0, -2, 1f))
+        composer.addView(Button(this).apply {
+            text = "صوت"
+            setTextColor(textPrimary)
+            background = roundedBackground(panel, 16)
+            setOnClickListener { startVoiceInput() }
+        }, LinearLayout.LayoutParams(-2, -2).apply { marginEnd = dp(6) })
         composer.addView(Button(this).apply {
             text = "إرسال"
             setTextColor(Color.WHITE)
@@ -232,7 +246,8 @@ class MainActivity : Activity() {
         val plan = buildPlan(request)
         val builder = StringBuilder("طلبك:\n").append(request).append("\n\nالخطة المقترحة:\n")
         plan.forEachIndexed { index, step -> builder.append(index + 1).append(". ").append(step).append("\n") }
-        builder.append("\nالموافقة ستطلب من النموذج المحلي توليد إجابة فقط؛ هذه النسخة لا تنفذ إجراءات تلقائية داخل التطبيقات.")
+        val action = detectApprovedAction(request)
+        builder.append("\n\n").append(action?.explanation ?: "سيتم إرسال الطلب إلى النموذج المحلي لتوليد إجابة فقط.")
         val content = TextView(this).apply {
             text = builder.toString()
             textSize = 15f
@@ -242,10 +257,10 @@ class MainActivity : Activity() {
         }
         val dialog = AlertDialog.Builder(this).setTitle("مراجعة خطة المهمة")
             .setView(ScrollView(this).apply { addView(content) })
-            .setPositiveButton("موافق، اسأل الذكاء الاصطناعي", null)
+            .setPositiveButton(if (action != null) "موافق، نفّذ الإجراء" else "موافق، اسأل الذكاء الاصطناعي", null)
             .setNegativeButton("إلغاء", null).create()
         dialog.setOnShowListener {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener { dialog.dismiss(); runLocalAi(request) }
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener { dialog.dismiss(); if (action != null) { try { action.execute() } catch (e: Exception) { addMessage("XELVOR", "تعذر تنفيذ الإجراء: " + (e.message ?: "خطأ غير معروف"), false) } } else runLocalAi(request) }
             dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener {
                 addMessage("XELVOR", "تم إلغاء الخطة، ولم يتم تنفيذ أي إجراء.", false)
                 dialog.dismiss()
@@ -283,6 +298,101 @@ class MainActivity : Activity() {
                     updateStatus()
                     addMessage("XELVOR", "حدث خطأ أثناء توليد الرد محليًا: " + (e.message ?: "غير معروف") + ". جرّب إعادة تحميل النموذج.", false)
                 }
+            }
+        }
+    }
+
+
+    private fun detectApprovedAction(request: String): ApprovedAction? {
+        val text = request.trim()
+        val lower = text.lowercase(Locale.ROOT)
+        if (lower.startsWith("افتح ") || lower.startsWith("افتحلي ") || lower.startsWith("شغل ") || lower.startsWith("شغّل ")) {
+            val appName = text.substringAfter(' ').trim()
+            val packages = mapOf(
+                "يوتيوب" to "com.google.android.youtube", "youtube" to "com.google.android.youtube",
+                "واتساب" to "com.whatsapp", "whatsapp" to "com.whatsapp",
+                "تيليجرام" to "org.telegram.messenger", "telegram" to "org.telegram.messenger",
+                "كروم" to "com.android.chrome", "chrome" to "com.android.chrome",
+                "الإعدادات" to "com.android.settings", "settings" to "com.android.settings",
+                "الكاميرا" to "com.android.camera", "camera" to "com.android.camera"
+            )
+            val pkg = packages.entries.firstOrNull { appName.lowercase(Locale.ROOT).contains(it.key) }?.value
+            if (pkg != null) return ApprovedAction("فتح التطبيق", "سيفتح XELVOR التطبيق الذي حددته: $appName. لن يرسل رسائل أو يغيّر بيانات داخله.") {
+                val launch = packageManager.getLaunchIntentForPackage(pkg)
+                    ?: throw ActivityNotFoundException("التطبيق غير مثبت أو لا يسمح النظام بفتحه")
+                startActivity(launch)
+                addMessage("XELVOR", "طلبت فتح $appName. تم تمرير الطلب إلى أندرويد.", false)
+            }
+        }
+        if (lower.startsWith("ابحث عن ") || lower.startsWith("ابحثلي عن ") || lower.startsWith("search for ")) {
+            val query = when {
+                lower.startsWith("search for ") -> text.substring(11).trim()
+                lower.startsWith("ابحثلي عن ") -> text.substringAfter("عن ").trim()
+                else -> text.substringAfter("عن ").trim()
+            }
+            if (query.isNotBlank()) return ApprovedAction("بحث على الويب", "سيفتح البحث في المتصفح باستخدام العبارة التالية:\n$query") {
+                startActivity(Intent(Intent.ACTION_WEB_SEARCH).putExtra(SearchManager.QUERY, query))
+                addMessage("XELVOR", "فتحت البحث عن: $query", false)
+            }
+        }
+        if (lower.contains("افتح الإعدادات") || lower == "settings" || lower == "افتح الاعدادات") {
+            return ApprovedAction("فتح إعدادات الهاتف", "سيفتح تطبيق إعدادات أندرويد. لن يغيّر أي إعداد بنفسه.") {
+                startActivity(Intent(Settings.ACTION_SETTINGS))
+                addMessage("XELVOR", "فتحت إعدادات الهاتف.", false)
+            }
+        }
+        if (lower.startsWith("اضبط منبه") || lower.startsWith("اعمل منبه") || lower.startsWith("set an alarm")) {
+            return ApprovedAction("إنشاء منبه", "سيفتح تطبيق الساعة لتحديد وقت المنبه ومراجعته قبل الحفظ.") {
+                startActivity(Intent(AlarmClock.ACTION_SET_ALARM).putExtra(AlarmClock.EXTRA_MESSAGE, "من XELVOR AI"))
+                addMessage("XELVOR", "فتحت شاشة إنشاء المنبه. راجع الوقت واحفظه داخل تطبيق الساعة.", false)
+            }
+        }
+        if (lower.startsWith("اتصل ب") || lower.startsWith("كلم رقم") || lower.startsWith("dial ")) {
+            val number = text.substringAfter(' ').trim()
+            return ApprovedAction("فتح لوحة الاتصال", "سيفتح تطبيق الهاتف مع الرقم إن أمكن؛ لن يجري اتصالًا تلقائيًا.") {
+                startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + Uri.encode(number))))
+                addMessage("XELVOR", "فتحت لوحة الاتصال للمراجعة. اضغط اتصال بنفسك إذا أردت.", false)
+            }
+        }
+        if (lower == "اقرأ الشاشة" || lower == "اقرأ محتوى الشاشة" || lower == "read screen") {
+            return ApprovedAction("قراءة الشاشة الحالية", "سيقرأ النص الظاهر فقط إذا فعّلت خدمة إمكانية الوصول يدويًا من إعدادات أندرويد. النص سيُمرر إلى النموذج المحلي.") {
+                val screenText = com.xelvor.ai.assistant.XelvorAccessibilityService.instance?.readVisibleText()
+                if (screenText.isNullOrBlank()) addMessage("XELVOR", "لم أستطع قراءة الشاشة. فعّل خدمة XELVOR من إعدادات إمكانية الوصول وافتح الشاشة التي تريد قراءتها.", false)
+                else runLocalAi("حلّل النص الظاهر على شاشة الهاتف وأخبرني بما يحتويه، دون تنفيذ أي إجراء:\\n$screenText")
+            }
+        }
+        if (lower.startsWith("اضغط على ") || lower.startsWith("اضغط ")) {
+            val target = text.substringAfter("اضغط").removePrefix(" على").trim()
+            if (target.isNotBlank()) return ApprovedAction("ضغط عنصر على الشاشة", "سيحاول الضغط على عنصر ظاهر اسمه «$target» فقط بعد موافقتك. تأكد أن العنصر المقصود ليس زر شراء أو إرسال أو حذف.") {
+                val clicked = com.xelvor.ai.assistant.XelvorAccessibilityService.instance?.clickVisibleText(target) ?: false
+                addMessage("XELVOR", if (clicked) "تم تمرير طلب الضغط على «$target» إلى أندرويد." else "لم أجد عنصرًا ظاهرًا مطابقًا لـ «$target». تأكد من تفعيل إمكانية الوصول وأن الشاشة المطلوبة مفتوحة.", false)
+            }
+        }
+        return null
+    }
+
+    private fun startVoiceInput() {
+        try {
+            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ar-EG")
+                putExtra(RecognizerIntent.EXTRA_PROMPT, "تحدث إلى XELVOR AI")
+            }
+            startActivityForResult(intent, speechRequestCode)
+        } catch (_: ActivityNotFoundException) {
+            addMessage("XELVOR", "خدمة التعرف على الصوت غير متاحة على هذا الهاتف. يمكنك الكتابة بدلًا من ذلك.", false)
+        }
+    }
+
+    @Deprecated("Deprecated by Android in favor of Activity Result APIs; retained for broad compatibility.")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == speechRequestCode && resultCode == RESULT_OK) {
+            val spoken = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+            if (!spoken.isNullOrBlank()) {
+                input.setText(spoken)
+                input.setSelection(input.text.length)
+                submitMessage()
             }
         }
     }
